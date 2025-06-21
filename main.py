@@ -80,7 +80,7 @@ def render_markdown_section(content: str, title: str) -> None:
 class AIResearchAnalyzer:
     def __init__(self):
         self.sentence_model, self.nlp = load_models()
-        self.groq_api_key = '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'
+        self.groq_api_key = None
         
     def extract_text_from_pdf(self, pdf_file) -> str:
         """Extract text from uploaded PDF using PyMuPDF"""
