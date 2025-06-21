@@ -10,6 +10,7 @@ import spacy
 from typing import Dict, List, Tuple, Optional
 import time
 from datetime import datetime
+import os
 
 # Load models once (cached)
 @st.cache_resource
@@ -80,7 +81,8 @@ def render_markdown_section(content: str, title: str) -> None:
 class AIResearchAnalyzer:
     def __init__(self):
         self.sentence_model, self.nlp = load_models()
-        self.groq_api_key = None
+        # Try to get API key from environment variable first, then from session state
+        self.groq_api_key = os.getenv('GROQ_API_KEY') or st.session_state.get('groq_api_key')
         
     def extract_text_from_pdf(self, pdf_file) -> str:
         """Extract text from uploaded PDF using PyMuPDF"""
@@ -666,14 +668,25 @@ def main():
         
         # API Key section
         with st.expander("🔑 API Configuration", expanded=True):
+            # Check if API key is set via environment variable
+            env_api_key = os.getenv('GROQ_API_KEY')
+            if env_api_key:
+                st.success("✅ API key found in environment variables!")
+                st.info("💡 API key is configured via environment variable (recommended for deployment)")
+            else:
+                st.info("💡 For deployment, set GROQ_API_KEY environment variable")
+                st.info("💡 For local testing, enter your API key below")
+            
             groq_key = st.text_input(
                 "Groq API Key (Free)", 
-                value=analyzer.groq_api_key,
+                value=st.session_state.get('groq_api_key', ''),
                 type="password", 
                 help="Get free API key from console.groq.com",
                 placeholder="Enter your Groq API key..."
             )
+            
             if groq_key:
+                st.session_state.groq_api_key = groq_key
                 analyzer.groq_api_key = groq_key
                 
                 # Test API connection
