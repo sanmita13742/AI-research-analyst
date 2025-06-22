@@ -9,9 +9,10 @@
 > It also lets you choose your own model (Ollama, Groq, Gemini) with your own API key (all free tiers).
 
 A  Streamlit application that analyzes research papers and user projects using multiple AI models via API calls. The app provides comprehensive methodology extraction, comparative analysis, and detailed scoring with actionable recommendations.
-![demo](reports\demo1.png)
-![demo](reports\demo2.png)
+![demo1](https://github.com/user-attachments/assets/97d87ea8-c979-498a-89ad-31f1b811e083)
+![demo2](https://github.com/user-attachments/assets/1998b2d1-3632-4c97-91d2-ff764f9f95be)
 ## ✨ Features
+
 
 ### 🔗 **5-Step Analysis Chain**
 1. **Document Structure Analysis** - Identifies abstract, methodology, and research objectives
