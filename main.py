@@ -2,7 +2,10 @@ import streamlit as st
 import fitz  # PyMuPDF
 import re
 import requests
+import json
 from sentence_transformers import SentenceTransformer
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
 import spacy
 from typing import Dict, List, Tuple
 import time
@@ -15,16 +18,15 @@ def load_models():
         sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
         nlp = spacy.load('en_core_web_sm')
         return sentence_model, nlp
-    except Exception:
+    except:
         st.error("Please install required models: pip install sentence-transformers spacy")
         st.stop()
 
 class AIResearchAnalyzer:
     def __init__(self):
         self.sentence_model, self.nlp = load_models()
-        # Use st.secrets for API keys if available (Streamlit Cloud best practice)
-        self.groq_api_key = st.secrets.get("GROQ_API_KEY", "") if hasattr(st, "secrets") else ''
-        self.gemini_api_key = st.secrets.get("GEMINI_API_KEY", "") if hasattr(st, "secrets") else ''
+        self.groq_api_key = ''
+        self.gemini_api_key = ''
         self.ollama_url = 'http://localhost:11434'
         self.ollama_model = 'llama3.2:1b'  # Default to fastest model
         self.selected_model = 'groq'
@@ -32,8 +34,11 @@ class AIResearchAnalyzer:
     def extract_text_from_pdf(self, pdf_file) -> str:
         """Extract text from uploaded PDF using PyMuPDF"""
         try:
-            with fitz.open(stream=pdf_file.read(), filetype="pdf") as doc:
-                text = "".join(page.get_text() for page in doc)
+            doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
+            text = ""
+            for page in doc:
+                text += page.get_text()
+            doc.close()
             return text
         except Exception as e:
             st.error(f"Error extracting PDF: {str(e)}")
@@ -842,101 +847,116 @@ NEXT STEPS:
         except Exception as e:
             return f"❌ Groq test exception: {str(e)}"
 
-# Move CSS to a variable for clarity
-CUSTOM_CSS = """
-<style>
-.main .block-container {
-    padding-top: 2rem;
-}
-.markdown-text-container {
-    background-color: #ffffff;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    border-left: 4px solid #007bff;
-    margin: 1rem 0;
-    color: #333333;
-    font-size: 14px;
-    line-height: 1.6;
-}
-.markdown-text-container h1, 
-.markdown-text-container h2, 
-.markdown-text-container h3 {
-    color: #2c3e50;
-    border-bottom: 2px solid #3498db;
-    padding-bottom: 0.5rem;
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
-}
-.markdown-text-container p {
-    color: #333333;
-    margin: 0.5rem 0;
-}
-.markdown-text-container ul, 
-.markdown-text-container ol {
-    color: #333333;
-    padding-left: 2rem;
-}
-.markdown-text-container li {
-    color: #333333;
-    margin: 0.5rem 0;
-}
-.markdown-text-container strong,
-.markdown-text-container b {
-    color: #2c3e50;
-    font-weight: bold;
-}
-.markdown-text-container em {
-    color: #6c757d;
-    font-style: italic;
-}
-.markdown-text-container code {
-    background-color: #e9ecef;
-    padding: 0.2rem 0.4rem;
-    border-radius: 0.25rem;
-    font-family: 'Courier New', monospace;
-    color: #333333;
-}
-.markdown-text-container blockquote {
-    border-left: 4px solid #007bff;
-    padding-left: 1rem;
-    margin: 1rem 0;
-    font-style: italic;
-    color: #6c757d;
-    background-color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 0.25rem;
-}
-.markdown-text-container table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 1rem 0;
-    color: #333333;
-}
-.markdown-text-container th, 
-.markdown-text-container td {
-    border: 1px solid #dee2e6;
-    padding: 0.75rem;
-    text-align: left;
-    color: #333333;
-}
-.markdown-text-container th {
-    background-color: #007bff;
-    color: white;
-}
-.markdown-text-container tr:nth-child(even) {
-    background-color: #f8f9fa;
-}
-</style>
-"""
-
 def main():
     st.set_page_config(
         page_title="AI Research Analyst Pro",
         page_icon="🤖",
         layout="wide"
     )
+    
     # Add custom CSS for better markdown styling
-    st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+    .main .block-container {
+        padding-top: 2rem;
+    }
+    
+    /* Style for markdown content */
+    .markdown-text-container {
+        background-color: #ffffff;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid #007bff;
+        margin: 1rem 0;
+        color: #333333;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    
+    .markdown-text-container h1, 
+    .markdown-text-container h2, 
+    .markdown-text-container h3 {
+        color: #2c3e50;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 0.5rem;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .markdown-text-container p {
+        color: #333333;
+        margin: 0.5rem 0;
+    }
+    
+    .markdown-text-container ul, 
+    .markdown-text-container ol {
+        color: #333333;
+        padding-left: 2rem;
+    }
+    
+    .markdown-text-container li {
+        color: #333333;
+        margin: 0.5rem 0;
+    }
+    
+    .markdown-text-container strong,
+    .markdown-text-container b {
+        color: #2c3e50;
+        font-weight: bold;
+    }
+    
+    .markdown-text-container em {
+        color: #6c757d;
+        font-style: italic;
+    }
+    
+    /* Style for code blocks */
+    .markdown-text-container code {
+        background-color: #e9ecef;
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+        font-family: 'Courier New', monospace;
+        color: #333333;
+    }
+    
+    /* Style for blockquotes */
+    .markdown-text-container blockquote {
+        border-left: 4px solid #007bff;
+        padding-left: 1rem;
+        margin: 1rem 0;
+        font-style: italic;
+        color: #6c757d;
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.25rem;
+    }
+    
+    /* Style for tables */
+    .markdown-text-container table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1rem 0;
+        color: #333333;
+    }
+    
+    .markdown-text-container th, 
+    .markdown-text-container td {
+        border: 1px solid #dee2e6;
+        padding: 0.75rem;
+        text-align: left;
+        color: #333333;
+    }
+    
+    .markdown-text-container th {
+        background-color: #007bff;
+        color: white;
+    }
+    
+    .markdown-text-container tr:nth-child(even) {
+        background-color: #f8f9fa;
+    }
+    </style>
+    """, unsafe_allow_html=True)
     
     st.title("🤖 AI Research Analyst Pro")
     st.markdown("**Advanced Chain-of-Prompts Analysis - Reliable Free AI Models!**")
