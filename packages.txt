@@ -1,3 +1,2 @@
 python3-dev
-build-essential 
-python3-spacy
+build-essential
